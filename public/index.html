@@ -1,0 +1,2599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard do Restaurante</title>
+  <style>
+    /* Error overlay style */
+    #error-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 2rem;
+      z-index: 9999;
+      font-family: monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="error-overlay"></div>
+  <div id="root"></div>
+  
+  <script>
+    // Global error handler to show errors on screen
+    window.onerror = function(msg, url, line, col, error) {
+      const overlay = document.getElementById('error-overlay');
+      if (overlay) {
+        overlay.style.display = 'block';
+        overlay.innerText = `Erro: ${msg}\n\nLocal: ${url}:${line}:${col}\n\nStack:\n${error?.stack || 'N/A'}`;
+      }
+      return false;
+    };
+    
+    // Catch unhandled promise rejections
+    window.onunhandledrejection = function(event) {
+      const overlay = document.getElementById('error-overlay');
+      if (overlay) {
+        overlay.style.display = 'block';
+        overlay.innerText += `\n\nPromessa Rejeitada: ${event.reason}`;
+      }
+    };
+  </script>
+
+  <script>
+    window.process = { env: { NODE_ENV: 'production' } };
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/prop-types/prop-types.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+  
+  <!-- Shim to ensure React is global -->
+  <script>
+    window.React = window.React || React;
+    window.ReactDOM = window.ReactDOM || ReactDOM;
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script type="text/babel" data-presets="env,react">
+    // Define Icons locally to avoid external dependency issues
+    const IconWrapper = ({ children, className, ...props }) => (
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+      >
+        {children}
+      </svg>
+    );
+
+    const LayoutDashboard = (props) => <IconWrapper {...props}><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></IconWrapper>;
+    const Home = (props) => <IconWrapper {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></IconWrapper>;
+    const BarChart = (props) => <IconWrapper {...props}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></IconWrapper>;
+    const Calendar = (props) => <IconWrapper {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconWrapper>;
+    const Settings = (props) => <IconWrapper {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconWrapper>;
+    const Search = (props) => <IconWrapper {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconWrapper>;
+    const Plus = (props) => <IconWrapper {...props}><path d="M5 12h14"/><path d="M12 5v14"/></IconWrapper>;
+    const MoonStar = (props) => <IconWrapper {...props}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></IconWrapper>;
+    const Bell = (props) => <IconWrapper {...props}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></IconWrapper>;
+    const MessageSquare = (props) => <IconWrapper {...props}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconWrapper>;
+    const ArrowDown = (props) => <IconWrapper {...props}><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></IconWrapper>;
+    const List = (props) => <IconWrapper {...props}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></IconWrapper>;
+    const LayoutGrid = (props) => <IconWrapper {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></IconWrapper>;
+    const Trash2 = (props) => <IconWrapper {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconWrapper>;
+    const MoreVertical = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></IconWrapper>;
+    const X = (props) => <IconWrapper {...props}><path d="M18 6 6 18"/><path d="m6 6 18 12"/></IconWrapper>;
+    const Star = (props) => <IconWrapper {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></IconWrapper>;
+    const Utensils = (props) => <IconWrapper {...props}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></IconWrapper>;
+    const ChefHat = (props) => <IconWrapper {...props}><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 9.08 0A5.11 5.11 0 0 1 18.59 6 4 4 0 0 1 20 13.87V21H6Z"/><line x1="6" x2="20" y1="17" y2="17"/></IconWrapper>;
+    const Coffee = (props) => <IconWrapper {...props}><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="1" y2="4"/><line x1="10" x2="10" y1="1" y2="4"/><line x1="14" x2="14" y1="1" y2="4"/></IconWrapper>;
+    const ClipboardList = (props) => <IconWrapper {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconWrapper>;
+    const ClockIcon = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconWrapper>;
+    const DollarSign = (props) => <IconWrapper {...props}><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></IconWrapper>;
+    const TrendingUp = (props) => <IconWrapper {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></IconWrapper>;
+    const TrendingDown = (props) => <IconWrapper {...props}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></IconWrapper>;
+    const ArrowUpRight = (props) => <IconWrapper {...props}><line x1="7" x2="17" y1="17" y2="7"/><polyline points="7 7 17 7 17 17"/></IconWrapper>;
+    const ArrowDownLeft = (props) => <IconWrapper {...props}><line x1="17" x2="7" y1="7" y2="17"/><polyline points="17 17 7 17 7 7"/></IconWrapper>;
+    const Users = (props) => <IconWrapper {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconWrapper>;
+    const Lock = (props) => <IconWrapper {...props}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconWrapper>;
+
+    const lucideGlobal = {
+      LayoutDashboard, Home, BarChart, Calendar, Settings, Search, Plus, MoonStar, Bell, 
+      MessageSquare, ArrowDown, List, LayoutGrid, Trash2, MoreVertical, X, Star, 
+      Utensils, ChefHat, Coffee, ClipboardList, ClockIcon, DollarSign, TrendingUp, TrendingDown,
+      ArrowUpRight, ArrowDownLeft, Users, Lock
+    };
+
+
+    
+    const spacing = {
+      page: {
+        header: "px-4 py-3",
+        sidebar: "px-2 py-3",
+        main: "px-4 py-4",
+        messages: "px-4 py-4"
+      },
+      card: {
+        base: "p-4",
+        compact: "p-3"
+      },
+      button: {
+        sm: "px-2 py-1",
+        md: "px-2.5 py-1.5",
+        lg: "px-3 py-2"
+      },
+      gap: {
+        xs: "gap-1.5",
+        sm: "gap-2",
+        md: "gap-3",
+        lg: "gap-4"
+      }
+    };
+
+    const cx = (...classes) => {
+      return classes.filter(Boolean).join(" ");
+    };
+
+    const parseDateLike = (v) => {
+      if (!v) return 0;
+      // Handle time string "HH:MM" for sorting by time today
+      if (v.includes(':') && v.length === 5) {
+        const [h, m] = v.split(':').map(Number);
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        return d.getTime();
+      }
+      const ts = Date.parse(v);
+      return Number.isNaN(ts) ? 0 : ts;
+    };
+
+    const clamp = (n, min, max) => {
+      return Math.min(Math.max(n, min), max);
+    };
+
+    const readLS = (key, fallback) => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
+    const writeLS = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {}
+    };
+
+    const API_URL = 'http://localhost:4001/api';
+    const api = {
+      get: async (endpoint) => {
+        const res = await fetch(`${API_URL}${endpoint}`);
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      },
+      post: async (endpoint, data) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      },
+      put: async (endpoint, data) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      },
+      delete: async (endpoint) => {
+        const res = await fetch(`${API_URL}${endpoint}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      }
+    };
+
+    const MenuBoard = () => {
+      const [menuItems, setMenuItems] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+
+      React.useEffect(() => {
+          api.get('/menu')
+            .then(data => { setMenuItems(data); setLoading(false); })
+            .catch(err => console.error(err));
+      }, []);
+
+      const [isEditing, setIsEditing] = React.useState(null);
+      const [editForm, setEditForm] = React.useState(null);
+
+      const categories = ['Entradas', 'Pratos Principais', 'Bebidas', 'Sobremesas'];
+
+      const handleSave = (e) => {
+        e.preventDefault();
+        if (isEditing === 'new') {
+            const newItem = { ...editForm, id: Date.now().toString() };
+            api.post('/menu', newItem).then(saved => {
+                setMenuItems([...menuItems, saved]);
+            });
+        } else {
+            api.put(`/menu/${isEditing}`, editForm).then(saved => {
+                setMenuItems(menuItems.map(item => item.id === isEditing ? saved : item));
+            });
+        }
+        setIsEditing(null);
+        setEditForm(null);
+      };
+
+      const handleDelete = (id) => {
+          if (confirm('Tem certeza que deseja excluir este item?')) {
+              api.delete(`/menu/${id}`).then(() => {
+                  setMenuItems(menuItems.filter(item => item.id !== id));
+              });
+          }
+      };
+
+      const startNew = () => {
+          setIsEditing('new');
+          setEditForm({ name: '', category: 'Pratos Principais', price: '', description: '', image: '' });
+      };
+
+      return (
+        <div className="p-4 space-y-4">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Cardápio</h2>
+                <button onClick={startNew} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2 shadow-sm">
+                    <Plus className="size-4" /> <span className="hidden sm:inline">Novo Item</span>
+                </button>
+            </div>
+
+            {isEditing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl w-full max-w-md ring-1 ring-slate-200 dark:ring-slate-700">
+                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-slate-100">{isEditing === 'new' ? 'Novo Item' : 'Editar Item'}</h3>
+                        <form onSubmit={handleSave} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome</label>
+                                <input className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoria</label>
+                                <select className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})}>
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Preço (R$)</label>
+                                <input type="number" step="0.01" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descrição</label>
+                                <textarea className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" rows="3" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL da Imagem</label>
+                                <input className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button type="button" onClick={() => setIsEditing(null)} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                {menuItems.map(item => (
+                    <div key={item.id} className="group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                        <div className="relative h-48 overflow-hidden">
+                            <img src={item.image || 'https://via.placeholder.com/300?text=Sem+Imagem'} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-bold text-slate-900 dark:text-slate-100 shadow-sm">
+                                R$ {Number(item.price).toFixed(2)}
+                            </div>
+                        </div>
+                        <div className="p-5 flex-1 flex flex-col">
+                            <div className="mb-2">
+                                <span className="inline-block px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-2">
+                                    {item.category}
+                                </span>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">{item.name}</h3>
+                            </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 flex-1 line-clamp-3">{item.description}</p>
+                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <button onClick={() => { setIsEditing(item.id); setEditForm(item); }} className="p-2 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30 transition-colors" title="Editar">
+                                    <Settings className="size-4" />
+                                </button>
+                                <button onClick={() => handleDelete(item.id)} className="p-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30 transition-colors" title="Excluir">
+                                    <Trash2 className="size-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+      );
+    };
+
+    const KitchenBoard = ({ projects, onAction, onCloseOrder }) => {
+      const columns = [
+        { id: 'upcoming', title: 'A Fazer', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
+        { id: 'inProgress', title: 'Preparando', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+        { id: 'completed', title: 'Pronto', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' }
+      ];
+
+      return (
+        <div className="p-6 overflow-x-auto h-full">
+           <div className="flex gap-6 min-w-max h-full">
+             {columns.map(col => {
+               const items = projects.filter(p => (p.status || 'inProgress') === col.id);
+               return (
+                 <div key={col.id} className="flex-1 min-w-[280px] flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl p-3 h-full border border-slate-200 dark:border-slate-700">
+                    <div className={`flex items-center justify-between mb-4 px-3 py-2 rounded-lg ${col.color}`}>
+                      <h3 className="font-bold">{col.title}</h3>
+                      <span className="text-xs font-bold bg-white/50 dark:bg-black/20 px-2 py-0.5 rounded-full">{items.length}</span>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                      {items.map(p => (
+                        <div key={p.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start mb-2">
+                             <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-900 dark:text-slate-100">#{p.id.slice(-4)}</span>
+                                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${p.type === 'delivery' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                    {p.type || 'mesa'}
+                                </span>
+                             </div>
+                             <span className="text-xs text-slate-500 font-mono">{p.date}</span>
+                          </div>
+                          <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1 leading-tight">{p.name}</h4>
+                          {p.subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">{p.subtitle}</p>}
+                          
+                          <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                            {col.id === 'upcoming' && (
+                              <button 
+                                onClick={() => onAction(p, 'prepare')}
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                              >
+                                <ChefHat className="size-3" /> Preparar
+                              </button>
+                            )}
+                            {col.id === 'inProgress' && (
+                              <button 
+                                onClick={() => onAction(p, 'complete')}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                              >
+                                <ClipboardList className="size-3" /> Concluir
+                              </button>
+                            )}
+                            {col.id === 'completed' && (
+                                <button 
+                                  onClick={() => onCloseOrder(p)}
+                                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <DollarSign className="size-3" /> Fechar Conta
+                                </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {items.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-10 text-slate-400 opacity-60">
+                          <div className="bg-slate-200 dark:bg-slate-700 p-3 rounded-full mb-2">
+                            <Coffee className="size-6" />
+                          </div>
+                          <span className="text-sm italic">Sem pedidos</span>
+                        </div>
+                      )}
+                    </div>
+                 </div>
+               );
+             })}
+           </div>
+        </div>
+      );
+    };
+
+    const FinanceBoard = ({ transactions: propTransactions, onAddTransaction, onDeleteTransaction }) => {
+        // Use local state if not provided, but ideally we lift this up. 
+        // However, FinanceBoard takes props. 
+        // Let's assume the parent ProjectDashboard handles fetching for simplicity, 
+        // OR we make FinanceBoard self-contained if it wasn't for the prop drilling.
+        // Given the props signature, it seems ProjectDashboard manages transactions.
+        // Let's check ProjectDashboard again.
+        
+        // Wait, ProjectDashboard passes `transactions` state to FinanceBoard.
+        // So I should modify ProjectDashboard to fetch transactions and pass them down.
+        // BUT FinanceBoard calls `onAddTransaction`.
+        // So I should modify ProjectDashboard's `setTransactions` logic to use API.
+        
+        // Let's leave FinanceBoard as is (UI only) and modify ProjectDashboard.
+        const [isModalOpen, setIsModalOpen] = React.useState(false);
+        const [form, setForm] = React.useState({
+            type: 'income',
+            description: '',
+            amount: '',
+            category: 'Outros',
+            date: new Date().toISOString().split('T')[0]
+        });
+
+        const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
+        const expense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
+        const balance = income - expense;
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            const newTransaction = {
+                ...form,
+                id: Date.now().toString(),
+                amount: parseFloat(form.amount)
+            };
+            onAddTransaction(newTransaction);
+            setIsModalOpen(false);
+            setForm({
+                type: 'income',
+                description: '',
+                amount: '',
+                category: 'Outros',
+                date: new Date().toISOString().split('T')[0]
+            });
+        };
+
+        const handleDelete = (id) => {
+            if(confirm('Deseja excluir esta transação?')) {
+                onDeleteTransaction(id);
+            }
+        };
+
+        return (
+            <div className="p-4 space-y-6 max-w-7xl mx-auto">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Financeiro</h2>
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2 shadow-sm"
+                    >
+                        <Plus className="size-4" /> Nova Transação
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">Saldo Atual</span>
+                            <div className={`p-2 rounded-lg ${balance >= 0 ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                                <DollarSign className="size-5" />
+                            </div>
+                        </div>
+                        <h3 className={`text-2xl font-bold ${balance >= 0 ? 'text-slate-900 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>
+                            R$ {balance.toFixed(2)}
+                        </h3>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">Entradas</span>
+                            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                                <TrendingUp className="size-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                            R$ {income.toFixed(2)}
+                        </h3>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">Saídas</span>
+                            <div className="p-2 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                                <TrendingDown className="size-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-red-600 dark:text-red-400">
+                            R$ {expense.toFixed(2)}
+                        </h3>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                    <th className="p-4 font-semibold text-slate-600 dark:text-slate-300">Data</th>
+                                    <th className="p-4 font-semibold text-slate-600 dark:text-slate-300">Descrição</th>
+                                    <th className="p-4 font-semibold text-slate-600 dark:text-slate-300">Categoria</th>
+                                    <th className="p-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Valor</th>
+                                    <th className="p-4 font-semibold text-slate-600 dark:text-slate-300 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {transactions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="p-8 text-center text-slate-500 dark:text-slate-400">
+                                            Nenhuma transação registrada.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    transactions.map(t => (
+                                        <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                            <td className="p-4 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
+                                                {new Date(t.date).toLocaleDateString('pt-BR')}
+                                            </td>
+                                            <td className="p-4 text-slate-900 dark:text-slate-100 font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`p-1.5 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                                        {t.type === 'income' ? <ArrowUpRight className="size-3" /> : <ArrowDownLeft className="size-3" />}
+                                                    </div>
+                                                    {t.description}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-slate-500 dark:text-slate-400 text-sm">
+                                                <span className="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                                                    {t.category}
+                                                </span>
+                                            </td>
+                                            <td className={`p-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                                {t.type === 'income' ? '+' : '-'} R$ {Number(t.amount).toFixed(2)}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <button 
+                                                    onClick={() => handleDelete(t.id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl w-full max-w-md ring-1 ring-slate-200 dark:ring-slate-700">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Nova Transação</h3>
+                                <button onClick={() => setIsModalOpen(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                                    <X className="size-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipo</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({...form, type: 'income'})}
+                                            className={`p-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${form.type === 'income' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                                        >
+                                            <ArrowUpRight className="size-4" /> Entrada
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({...form, type: 'expense'})}
+                                            className={`p-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${form.type === 'expense' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                                        >
+                                            <ArrowDownLeft className="size-4" /> Saída
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descrição</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                        value={form.description}
+                                        onChange={e => setForm({...form, description: e.target.value})}
+                                        placeholder="Ex: Pagamento Fornecedor"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Valor (R$)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            required
+                                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                            value={form.amount}
+                                            onChange={e => setForm({...form, amount: e.target.value})}
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data</label>
+                                        <input 
+                                            type="date" 
+                                            required
+                                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                            value={form.date}
+                                            onChange={e => setForm({...form, date: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoria</label>
+                                    <select 
+                                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                        value={form.category}
+                                        onChange={e => setForm({...form, category: e.target.value})}
+                                    >
+                                        <option value="Vendas">Vendas</option>
+                                        <option value="Fornecedores">Fornecedores</option>
+                                        <option value="Manutenção">Manutenção</option>
+                                        <option value="Salários">Salários</option>
+                                        <option value="Impostos">Impostos</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors">Cancelar</button>
+                                    <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const SettingsBoard = ({ 
+        theme, 
+        onToggleTheme, 
+        user, 
+        onUpdateUser,
+        title,
+        onUpdateTitle
+    }) => {
+        const [activeSection, setActiveSection] = React.useState('general');
+        const [tables, setTables] = React.useState([]);
+        const [staff, setStaff] = React.useState([]);
+        const [adminPassword, setAdminPassword] = React.useState('');
+        
+        // Load data
+        React.useEffect(() => {
+            api.get('/tables').then(setTables).catch(console.error);
+            api.get('/staff').then(setStaff).catch(console.error);
+            api.get('/settings/admin_password').then(res => {
+                if(res.value) setAdminPassword(res.value);
+            }).catch(console.error);
+        }, []);
+
+        // Form states
+        const [newTable, setNewTable] = React.useState({ name: '', seats: '' });
+        const [newStaff, setNewStaff] = React.useState({ name: '', role: 'Garçom', pin: '' });
+        const [passwordForm, setPasswordForm] = React.useState({ current: '', new: '', confirm: '' });
+
+        const handleReset = () => {
+            if(confirm("Isso apagará todos os dados salvos localmente (pedidos, cardápio, configurações). Deseja continuar?")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        };
+
+        const addTable = (e) => {
+            e.preventDefault();
+            if(!newTable.name) return;
+            const item = { id: Date.now().toString(), ...newTable };
+            api.post('/tables', item).then(saved => {
+                setTables([...tables, saved]);
+                setNewTable({ name: '', seats: '' });
+            });
+        };
+
+        const removeTable = (id) => {
+            api.delete(`/tables/${id}`).then(() => {
+                setTables(tables.filter(t => t.id !== id));
+            });
+        };
+
+        const addStaff = (e) => {
+            e.preventDefault();
+            if(!newStaff.name) return;
+            const item = { id: Date.now().toString(), ...newStaff };
+            api.post('/staff', item).then(saved => {
+                setStaff([...staff, saved]);
+                setNewStaff({ name: '', role: 'Garçom', pin: '' });
+            });
+        };
+
+        const removeStaff = (id) => {
+            api.delete(`/staff/${id}`).then(() => {
+                setStaff(staff.filter(s => s.id !== id));
+            });
+        };
+
+        const changePassword = (e) => {
+            e.preventDefault();
+            if(adminPassword && passwordForm.current !== adminPassword) {
+                alert("Senha atual incorreta!");
+                return;
+            }
+            if(passwordForm.new !== passwordForm.confirm) {
+                alert("As novas senhas não coincidem!");
+                return;
+            }
+            api.post('/settings/admin_password', { value: passwordForm.new }).then(() => {
+                setAdminPassword(passwordForm.new);
+                alert("Senha alterada com sucesso!");
+                setPasswordForm({ current: '', new: '', confirm: '' });
+            });
+        };
+
+        const tabs = [
+            { id: 'general', label: 'Geral', icon: <Settings className="size-4" /> },
+            { id: 'tables', label: 'Mesas', icon: <LayoutGrid className="size-4" /> },
+            { id: 'staff', label: 'Colaboradores', icon: <Users className="size-4" /> },
+            { id: 'security', label: 'Segurança', icon: <Lock className="size-4" /> },
+        ];
+
+        return (
+            <div className="max-w-5xl mx-auto p-6">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">Configurações</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {/* Sidebar */}
+                    <nav className="space-y-1">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveSection(tab.id)}
+                                className={cx(
+                                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                    activeSection === tab.id 
+                                    ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400" 
+                                    : "text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                                )}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    {/* Content */}
+                    <div className="md:col-span-3 space-y-6">
+                        {activeSection === 'general' && (
+                            <div className="space-y-6 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Aparência</h3>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium text-slate-900 dark:text-slate-100">Tema do Sistema</p>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400">Alternar entre modo claro e escuro</p>
+                                        </div>
+                                        <button 
+                                            onClick={onToggleTheme}
+                                            className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                                        >
+                                            {theme === 'dark' ? 'Modo Escuro' : theme === 'light' ? 'Modo Claro' : 'Sistema'}
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Perfil</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome de Exibição</label>
+                                            <input 
+                                                type="text" 
+                                                value={user.name}
+                                                onChange={(e) => onUpdateUser({...user, name: e.target.value})}
+                                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL do Avatar</label>
+                                            <div className="flex gap-3">
+                                                <input 
+                                                    type="text" 
+                                                    value={user.avatarUrl}
+                                                    onChange={(e) => onUpdateUser({...user, avatarUrl: e.target.value})}
+                                                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                                <img src={user.avatarUrl} alt="Preview" className="size-10 rounded-full object-cover bg-slate-100" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Restaurante</h3>
+                                     <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome do Restaurante</label>
+                                        <input 
+                                            type="text" 
+                                            value={title}
+                                            onChange={(e) => onUpdateTitle(e.target.value)}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-red-50 dark:bg-red-900/10">
+                                    <h3 className="text-lg font-semibold text-red-800 dark:text-red-400 mb-2">Zona de Perigo</h3>
+                                    <p className="text-sm text-red-600 dark:text-red-300 mb-4">Ações irreversíveis que afetam seus dados locais.</p>
+                                    <button 
+                                        onClick={handleReset}
+                                        className="px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+                                    >
+                                        Resetar Tudo
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'tables' && (
+                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Cadastro de Mesas</h3>
+                                <form onSubmit={addTable} className="flex gap-4 mb-6">
+                                    <input 
+                                        placeholder="Nome/Número da Mesa"
+                                        value={newTable.name}
+                                        onChange={e => setNewTable({...newTable, name: e.target.value})}
+                                        className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                    />
+                                    <input 
+                                        placeholder="Lugares"
+                                        type="number"
+                                        value={newTable.seats}
+                                        onChange={e => setNewTable({...newTable, seats: e.target.value})}
+                                        className="w-24 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                    />
+                                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Adicionar</button>
+                                </form>
+                                <div className="space-y-2">
+                                    {tables.map(table => (
+                                        <div key={table.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                                            <div>
+                                                <span className="font-medium text-slate-900 dark:text-slate-100">{table.name}</span>
+                                                {table.seats && <span className="ml-2 text-sm text-slate-500">({table.seats} lugares)</span>}
+                                            </div>
+                                            <button onClick={() => removeTable(table.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="size-4" /></button>
+                                        </div>
+                                    ))}
+                                    {tables.length === 0 && <p className="text-slate-500 text-center py-4">Nenhuma mesa cadastrada.</p>}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'staff' && (
+                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Cadastro de Colaboradores</h3>
+                                <form onSubmit={addStaff} className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                                    <input 
+                                        placeholder="Nome do Colaborador"
+                                        value={newStaff.name}
+                                        onChange={e => setNewStaff({...newStaff, name: e.target.value})}
+                                        className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                    />
+                                    <select 
+                                        value={newStaff.role}
+                                        onChange={e => setNewStaff({...newStaff, role: e.target.value})}
+                                        className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                    >
+                                        <option>Garçom</option>
+                                        <option>Cozinheiro</option>
+                                        <option>Gerente</option>
+                                        <option>Caixa</option>
+                                    </select>
+                                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Adicionar</button>
+                                </form>
+                                <div className="space-y-2">
+                                    {staff.map(s => (
+                                        <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                                    {s.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-slate-900 dark:text-slate-100">{s.name}</p>
+                                                    <p className="text-xs text-slate-500">{s.role}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => removeStaff(s.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="size-4" /></button>
+                                        </div>
+                                    ))}
+                                    {staff.length === 0 && <p className="text-slate-500 text-center py-4">Nenhum colaborador cadastrado.</p>}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'security' && (
+                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Alterar Senha</h3>
+                                <form onSubmit={changePassword} className="max-w-md space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Senha Atual</label>
+                                        <input 
+                                            type="password"
+                                            value={passwordForm.current}
+                                            onChange={e => setPasswordForm({...passwordForm, current: e.target.value})}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nova Senha</label>
+                                        <input 
+                                            type="password"
+                                            value={passwordForm.new}
+                                            onChange={e => setPasswordForm({...passwordForm, new: e.target.value})}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirmar Nova Senha</label>
+                                        <input 
+                                            type="password"
+                                            value={passwordForm.confirm}
+                                            onChange={e => setPasswordForm({...passwordForm, confirm: e.target.value})}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                                        />
+                                    </div>
+                                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Alterar Senha</button>
+                                </form>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    function ProjectDashboard({
+      title = "Restaurante",
+      user = {
+        name: "Chef",
+        avatarUrl: "https://ui-avatars.com/api/?name=Chef&background=6366f1&color=fff",
+      },
+      sidebarLinks = [
+        { id: "orders", label: "Pedidos", active: true, icon: <ClipboardList className="size-5" /> },
+        { id: "menu", label: "Cardápio", icon: <Utensils className="size-5" /> },
+        { id: "kitchen", label: "Cozinha", icon: <ChefHat className="size-5" /> },
+        { id: "finance", label: "Financeiro", icon: <DollarSign className="size-5" /> },
+        { id: "settings", label: "Configurações", icon: <Settings className="size-5" /> },
+      ],
+      stats,
+      projects,
+      messages = [],
+      view,
+      defaultView = "grid",
+      onViewChange,
+      searchQuery,
+      defaultSearchQuery = "",
+      onSearchQueryChange,
+      showSearch = true,
+      searchPlaceholder = "Buscar pedidos...",
+      messagesOpen,
+      defaultMessagesOpen = false,
+      onMessagesOpenChange,
+      sortBy,
+      defaultSortBy = "date",
+      sortDir,
+      defaultSortDir = "desc",
+      onSortChange,
+      statusFilter,
+      defaultStatusFilter = "all",
+      onStatusFilterChange,
+      pageSize = 9,
+      initialPage = 1,
+      onPageChange,
+      virtualizeList = false,
+      estimatedRowHeight = 140,
+      onProjectClick,
+      onProjectAction,
+      onProjectUpdate,
+      onProjectsReorder,
+      allowCreate = true,
+      onProjectCreate,
+      generateId,
+      onMessageStarChange,
+      showThemeToggle = true,
+      onToggleTheme,
+      theme,
+      defaultTheme = "system",
+      onThemeChange,
+      persistKey,
+      className = "",
+      loading = false,
+      emptyProjectsLabel = "Nenhum pedido encontrado.",
+      emptyMessagesLabel = "Sem mensagens.",
+    }) {
+      const lsKey = persistKey ? (k) => `pd:${persistKey}:${k}` : null;
+      const [internalView, setInternalView] = React.useState(
+        lsKey ? readLS(lsKey("view"), defaultView) : defaultView
+      );
+      const viewMode = view || internalView;
+      const [internalQuery, setInternalQuery] = React.useState(
+        lsKey ? readLS(lsKey("query"), defaultSearchQuery) : defaultSearchQuery
+      );
+      const query = searchQuery || internalQuery;
+      const [internalMessagesOpen, setInternalMessagesOpen] = React.useState(
+        lsKey ? readLS(lsKey("messagesOpen"), defaultMessagesOpen) : defaultMessagesOpen
+      );
+      const isMessagesOpen = messagesOpen !== undefined ? messagesOpen : internalMessagesOpen;
+      const [internalSortBy, setInternalSortBy] = React.useState(
+        lsKey ? readLS(lsKey("sortBy"), defaultSortBy) : defaultSortBy
+      );
+      const [internalSortDir, setInternalSortDir] = React.useState(
+        lsKey ? readLS(lsKey("sortDir"), defaultSortDir) : defaultSortDir
+      );
+      const activeSortBy = sortBy || internalSortBy;
+      const activeSortDir = sortDir || internalSortDir;
+      const [internalStatusFilter, setInternalStatusFilter] = React.useState(
+        lsKey ? readLS(lsKey("statusFilter"), defaultStatusFilter) : defaultStatusFilter
+      );
+      const activeStatusFilter = statusFilter || internalStatusFilter;
+      const [page, setPage] = React.useState(
+        lsKey ? readLS(lsKey("page"), initialPage) : initialPage
+      );
+      const [localProjects, setLocalProjects] = React.useState(projects);
+      const [activeTab, setActiveTab] = React.useState("settings");
+
+      const [transactions, setTransactions] = React.useState([]);
+      React.useEffect(() => {
+          api.get('/transactions').then(setTransactions).catch(console.error);
+      }, []);
+
+      const [closeOrderProject, setCloseOrderProject] = React.useState(null);
+      const [closeOrderForm, setCloseOrderForm] = React.useState({
+        amount: '',
+        paymentMethod: 'Dinheiro',
+        description: ''
+      });
+      
+      const [internalUser, setInternalUser] = React.useState(() => {
+        if (lsKey) return readLS(lsKey("user"), user);
+        return user;
+      });
+      const [internalTitle, setInternalTitle] = React.useState(() => {
+        if (lsKey) return readLS(lsKey("title"), title);
+        return title;
+      });
+
+      React.useEffect(() => { if (lsKey) writeLS(lsKey("user"), internalUser); }, [lsKey, internalUser]);
+      React.useEffect(() => { if (lsKey) writeLS(lsKey("title"), internalTitle); }, [lsKey, internalTitle]);
+
+      React.useEffect(() => {
+        if (onProjectUpdate || onProjectsReorder) return;
+        setLocalProjects(projects);
+      }, [projects, onProjectUpdate, onProjectsReorder]);
+      const dataProjects = onProjectUpdate || onProjectsReorder ? projects : localProjects;
+      const searchInputId = React.useId();
+      const statusSelectId = React.useId();
+      const computedStats = React.useMemo(() => {
+        if (stats) return stats;
+        const total = dataProjects.length;
+        const byStatus = dataProjects.reduce(
+          (acc, p) => {
+            acc[p.status || "inProgress"]++;
+            return acc;
+          },
+          { inProgress: 0, upcoming: 0, completed: 0, paused: 0 }
+        );
+        return [
+          { id: "inProgress", label: "Preparando", value: byStatus.inProgress },
+          { id: "upcoming", label: "Na Fila", value: byStatus.upcoming },
+          { id: "completed", label: "Prontos", value: byStatus.completed },
+          { id: "total", label: "Total", value: total },
+        ];
+      }, [stats, dataProjects]);
+      const orderMap = React.useMemo(() => {
+        const map = new Map();
+        dataProjects.forEach((p, i) => map.set(p.id, i));
+        return map;
+      }, [dataProjects]);
+      const preparedProjects = React.useMemo(() => {
+        const q = query.trim().toLowerCase();
+        let list = dataProjects.slice();
+        if (activeStatusFilter !== "all") {
+          list = list.filter((p) => (p.status || "inProgress") === activeStatusFilter);
+        }
+        if (q) {
+          list = list.filter(
+            (p) =>
+              p.name.toLowerCase().includes(q) ||
+              (p.subtitle?.toLowerCase().includes(q) || false)
+          );
+        }
+        list.sort((a, b) => {
+          let cmp = 0;
+          switch (activeSortBy) {
+            case "manual":
+              cmp = (orderMap.get(a.id) - orderMap.get(b.id));
+              break;
+            case "date":
+              cmp = parseDateLike(a.date) - parseDateLike(b.date);
+              break;
+            case "name":
+              cmp = a.name.localeCompare(b.name);
+              break;
+            case "progress":
+              cmp = (a.progress || 0) - (b.progress || 0);
+              break;
+          }
+          return activeSortBy === "manual" ? cmp : activeSortDir === "asc" ? cmp : -cmp;
+        });
+        return list;
+      }, [dataProjects, query, activeSortBy, activeSortDir, activeStatusFilter, orderMap]);
+      const totalPages = virtualizeList ? 1 : Math.max(1, Math.ceil(preparedProjects.length / pageSize));
+      const currentPage = virtualizeList ? 1 : clamp(page, 1, totalPages);
+      const pagedProjects = React.useMemo(() => {
+        if (virtualizeList) return preparedProjects;
+        const start = (currentPage - 1) * pageSize;
+        return preparedProjects.slice(start, start + pageSize);
+      }, [preparedProjects, currentPage, pageSize, virtualizeList]);
+      React.useEffect(() => {
+        if (!virtualizeList) setPage(1);
+      }, [query, activeStatusFilter, activeSortBy, activeSortDir, pageSize, virtualizeList]);
+      const [internalTheme, setInternalTheme] = React.useState(() => {
+        if (theme) return theme;
+        if (lsKey) return readLS(lsKey("theme"), "system");
+        return defaultTheme;
+      });
+      const tableGroups = React.useMemo(() => {
+        if (activeTab !== 'orders') return {};
+        const groups = {};
+        dataProjects.forEach(p => {
+             // Consider 'inProgress', 'upcoming', 'completed' (active orders)
+             if (p.status === 'cancelled' || p.status === 'paused') return;
+             
+             // Check if it's a table (either explicit type or inferred from subtitle)
+             let tableName = null;
+             if (p.type === 'mesa') {
+                 // Try to extract "Mesa XX"
+                 const match = p.subtitle?.match(/(Mesa\s*\d+)/i);
+                 tableName = match ? match[1] : (p.subtitle ? p.subtitle.split('-')[0].trim() : 'Mesa Indefinida');
+             } else if (p.subtitle?.toLowerCase().includes('mesa')) {
+                 const match = p.subtitle.match(/(Mesa\s*\d+)/i);
+                 tableName = match ? match[1] : 'Mesa Indefinida';
+             }
+
+             if (tableName) {
+                 if (!groups[tableName]) groups[tableName] = { name: tableName, items: [], total: 0 };
+                 groups[tableName].items.push(p);
+                 groups[tableName].total += parseFloat(p.value || 0);
+             }
+        });
+        return groups;
+      }, [dataProjects, activeTab]);
+
+      const activeTheme = theme || internalTheme;
+      const applyTheme = React.useCallback((mode) => {
+        const root = document.documentElement;
+        const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+        const isDark = mode === "dark" || (mode === "system" && prefersDark);
+        root.classList.toggle("dark", isDark);
+      }, []);
+      React.useEffect(() => {
+        applyTheme(activeTheme);
+        if (lsKey) writeLS(lsKey("theme"), activeTheme);
+      }, [activeTheme, applyTheme, lsKey]);
+      const toggleTheme = () => {
+        if (onToggleTheme) return onToggleTheme();
+        const next = activeTheme === "dark" ? "light" : activeTheme === "light" ? "system" : "dark";
+        if (theme === undefined) setInternalTheme(next);
+        onThemeChange?.(next);
+      };
+      const [editingId, setEditingId] = React.useState(null);
+      const [editDraft, setEditDraft] = React.useState(null);
+      const [createOpen, setCreateOpen] = React.useState(false);
+      const [createDraft, setCreateDraft] = React.useState({
+        id: "",
+        name: "",
+        subtitle: "",
+        date: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+        progress: 0,
+        status: "inProgress",
+        accentColor: "#6366f1",
+        participants: [],
+        type: 'mesa',
+        value: ''
+      });
+      const [detailProject, setDetailProject] = React.useState(null);
+      const [dragId, setDragId] = React.useState(null);
+      const [reorderMode, setReorderMode] = React.useState(false);
+      const [liveMsg, setLiveMsg] = React.useState("");
+      const scrollRef = React.useRef(null);
+      const messagesPanelRef = React.useRef(null);
+      const liveRef = React.useRef(null);
+      const [scrollTop, setScrollTop] = React.useState(0);
+      const onScroll = React.useCallback(() => {
+        const t = scrollRef.current?.scrollTop || 0;
+        setScrollTop(t);
+      }, []);
+      React.useEffect(() => {
+        if (!virtualizeList) return;
+        const el = scrollRef.current;
+        if (!el) return;
+        el.addEventListener("scroll", onScroll, { passive: true });
+        return () => el.removeEventListener("scroll", onScroll);
+      }, [virtualizeList, onScroll]);
+      const viewportH = scrollRef.current?.clientHeight || 0;
+      const itemH = estimatedRowHeight;
+      const overscan = 3;
+      const totalCount = pagedProjects.length;
+      const startIndex = virtualizeList && viewMode === "list"
+        ? Math.max(0, Math.floor(scrollTop / itemH) - overscan) : 0;
+      const endIndex = virtualizeList && viewMode === "list"
+        ? Math.min(totalCount, Math.ceil((scrollTop + viewportH) / itemH) + overscan)
+        : totalCount;
+      const before = startIndex * itemH;
+      const after = Math.max(0, (totalCount - endIndex) * itemH);
+      const visibleProjects = virtualizeList && viewMode === "list"
+        ? pagedProjects.slice(startIndex, endIndex)
+        : pagedProjects;
+      const [localStarred, setLocalStarred] = React.useState({});
+      React.useEffect(() => {
+        const seed = {};
+        messages.forEach((m) => (seed[m.id] = !!m.starred));
+        setLocalStarred(seed);
+      }, [messages]);
+      const isStarred = (m) => m.starred !== undefined ? m.starred : (localStarred[m.id] || false);
+      const toggleStar = (m) => {
+        const next = !isStarred(m);
+        if (onMessageStarChange) {
+          onMessageStarChange(m.id, next);
+        } else {
+          setLocalStarred((s) => ({ ...s, [m.id]: next }));
+        }
+      };
+      React.useEffect(() => { if (lsKey) writeLS(lsKey("view"), viewMode); }, [lsKey, viewMode]);
+      React.useEffect(() => { if (lsKey) writeLS(lsKey("query"), query); }, [lsKey, query]);
+      React.useEffect(() => { if (lsKey) writeLS(lsKey("messagesOpen"), isMessagesOpen); }, [lsKey, isMessagesOpen]);
+      React.useEffect(() => { if (lsKey) { writeLS(lsKey("sortBy"), activeSortBy); writeLS(lsKey("sortDir"), activeSortDir); } }, [lsKey, activeSortBy, activeSortDir]);
+      React.useEffect(() => { if (lsKey) writeLS(lsKey("statusFilter"), activeStatusFilter); }, [lsKey, activeStatusFilter]);
+      React.useEffect(() => { if (lsKey && !virtualizeList) writeLS(lsKey("page"), currentPage); }, [lsKey, currentPage, virtualizeList]);
+      React.useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === "Escape") {
+            if (isMessagesOpen) setMessagesOpen(false);
+            if (reorderMode) setReorderMode(false);
+          }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, [isMessagesOpen, reorderMode]);
+      React.useEffect(() => {
+        if (!isMessagesOpen) return;
+        const root = messagesPanelRef.current;
+        if (!root) return;
+        const focusables = root.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusables[0];
+        first?.focus();
+        const handleKeyDown = (e) => {
+          if (e.key !== "Tab" || focusables.length === 0) return;
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              last.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === last) {
+              first.focus();
+              e.preventDefault();
+            }
+          }
+        };
+        root.addEventListener("keydown", handleKeyDown);
+        return () => root.removeEventListener("keydown", handleKeyDown);
+      }, [isMessagesOpen]);
+      const setView = (next) => {
+        if (view === undefined) setInternalView(next);
+        onViewChange?.(next);
+      };
+      const setSearch = (q) => {
+        if (searchQuery === undefined) setInternalQuery(q);
+        onSearchQueryChange?.(q);
+      };
+      const setMessagesOpen = (open) => {
+        if (messagesOpen === undefined) setInternalMessagesOpen(open);
+        onMessagesOpenChange?.(open);
+      };
+      const setSort = (by, dir) => {
+        if (sortBy === undefined) setInternalSortBy(by);
+        if (sortDir === undefined) setInternalSortDir(dir);
+        onSortChange?.(by, dir);
+      };
+      const setStatusFilter = (status) => {
+        if (statusFilter === undefined) setInternalStatusFilter(status);
+        onStatusFilterChange?.(status);
+      };
+      const goToPage = (p) => {
+        setPage(p);
+        onPageChange?.(p);
+      };
+      const startEdit = (p) => {
+        setEditingId(p.id);
+        setEditDraft({ ...p });
+      };
+      const cancelEdit = () => {
+        setEditingId(null);
+        setEditDraft(null);
+      };
+      const saveEdit = () => {
+        if (!editDraft) return;
+        if (onProjectUpdate) {
+          onProjectUpdate(editDraft);
+        } else {
+          setLocalProjects((arr) => arr.map((x) => (x.id === editDraft.id ? editDraft : x)));
+        }
+        setEditingId(null);
+        setEditDraft(null);
+      };
+      const mkId = () =>
+        generateId?.() ||
+        Math.random().toString(36).slice(2, 8) + "-" + Date.now().toString(36).slice(-4);
+      const submitCreate = (e) => {
+        e.preventDefault();
+        const id = mkId();
+        const proj = { ...createDraft, id };
+        if (onProjectCreate) {
+          onProjectCreate(proj);
+        } else {
+          setLocalProjects((arr) => [proj, ...arr]);
+        }
+        setCreateOpen(false);
+        setCreateDraft({
+          id: "",
+          name: "",
+          subtitle: "",
+          date: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+          progress: 0,
+          status: "inProgress",
+          accentColor: "#6366f1",
+          participants: [],
+          type: 'mesa',
+          value: ''
+        });
+      };
+      const openDetail = (p) => {
+        if (onProjectClick) return onProjectClick(p.id);
+        setDetailProject(p);
+      };
+      const handleDragStart = (id) => setDragId(id);
+      const handleDragOver = (e) => e.preventDefault();
+      const doReorder = (ids) => {
+        if (onProjectsReorder) {
+          onProjectsReorder(ids);
+        } else {
+          setLocalProjects((arr) => {
+            const map = new Map(arr.map((p) => [p.id, p]));
+            return ids.map((id) => map.get(id)).filter(Boolean);
+          });
+        }
+      };
+      const handleDrop = (targetId) => {
+        if (!dragId || dragId === targetId) return;
+        const ids = preparedProjects.map((p) => p.id);
+        const from = ids.indexOf(dragId);
+        const to = ids.indexOf(targetId);
+        if (from < 0 || to < 0) return;
+        ids.splice(to, 0, ids.splice(from, 1)[0]);
+        const full = dataProjects.map((p) => p.id);
+        const reordered = reorderWithinFull(full, ids);
+        doReorder(reordered);
+        setDragId(null);
+        announce(`Movido para posição ${to + 1}.`);
+      };
+      function reorderWithinFull(fullIds, visibleIds) {
+        const setVisible = new Set(visibleIds);
+        const remaining = fullIds.filter((id) => !setVisible.has(id));
+        return [...visibleIds, ...remaining];
+      }
+      const announce = (msg) => {
+        setLiveMsg("");
+        setTimeout(() => setLiveMsg(msg), 10);
+      };
+      const canReorder = activeSortBy === "manual" && !query && activeStatusFilter === "all" && viewMode === "list";
+      const moveBy = (id, delta) => {
+        const vis = preparedProjects.map((p) => p.id);
+        const i = vis.indexOf(id);
+        if (i < 0) return;
+        const j = clamp(i + delta, 0, vis.length - 1);
+        if (i === j) return;
+        vis.splice(j, 0, vis.splice(i, 1)[0]);
+        const reordered = reorderWithinFull(dataProjects.map((p) => p.id), vis);
+        doReorder(reordered);
+        announce(`Movido para posição ${j + 1}.`);
+      };
+      const moveToIndex = (id, index) => {
+        const vis = preparedProjects.map((p) => p.id);
+        const i = vis.indexOf(id);
+        const j = clamp(index, 0, vis.length - 1);
+        if (i < 0 || i === j) return;
+        vis.splice(j, 0, vis.splice(i, 1)[0]);
+        const reordered = reorderWithinFull(dataProjects.map((p) => p.id), vis);
+        doReorder(reordered);
+        announce(`Movido para posição ${j + 1}.`);
+      };
+
+      const handleQuickAction = (p, action) => {
+        let updates = {};
+        if (action === 'prepare') {
+          updates = { status: 'inProgress', progress: 10 };
+        } else if (action === 'complete') {
+          updates = { status: 'completed', progress: 100 };
+        }
+        
+        const newP = { ...p, ...updates };
+        if (onProjectUpdate) {
+          onProjectUpdate(newP);
+        } else {
+          setLocalProjects((arr) => arr.map((x) => (x.id === p.id ? newP : x)));
+        }
+      };
+
+      const deleteProject = (id) => {
+        if (!window.confirm('Excluir este pedido?')) return;
+        setLocalProjects((arr) => arr.filter((p) => p.id !== id));
+        setEditingId(null);
+        setEditDraft(null);
+      };
+
+      const openCloseOrderModal = (p) => {
+          setCloseOrderProject(p);
+          setCloseOrderForm({
+              amount: p.value || '',
+              paymentMethod: 'Dinheiro',
+              description: `Pagamento Pedido #${p.id.slice(-4)} - ${p.name}`
+          });
+      };
+
+      const handleCloseOrder = (e) => {
+          e.preventDefault();
+          if (!closeOrderProject) return;
+
+          const amount = parseFloat(closeOrderForm.amount);
+          if (isNaN(amount) || amount <= 0) {
+              alert('Valor inválido');
+              return;
+          }
+
+          const newTransaction = {
+              id: Date.now().toString(),
+              type: 'income',
+              description: closeOrderForm.description,
+              amount: amount,
+              category: 'Vendas',
+              date: new Date().toISOString().split('T')[0],
+              paymentMethod: closeOrderForm.paymentMethod
+          };
+          api.post('/transactions', newTransaction).then(saved => {
+              setTransactions([saved, ...transactions]);
+          });
+
+          const updatedProject = {
+              ...closeOrderProject,
+              status: 'completed',
+              progress: 100,
+              value: amount
+          };
+          
+          if (onProjectUpdate) {
+            onProjectUpdate(updatedProject);
+          } else {
+            setLocalProjects((arr) => arr.map((x) => (x.id === updatedProject.id ? updatedProject : x)));
+          }
+
+          setCloseOrderProject(null);
+          setCloseOrderForm({ amount: '', paymentMethod: 'Dinheiro', description: '' });
+      };
+      
+      return (
+        <div className={cx(
+          "pd-container flex flex-col h-screen bg-slate-50 dark:bg-slate-900",
+          className
+        )}>
+          {/* Styles included for self-containment */}
+          <style>{`
+            .pd-container { font-family: system-ui, -apple-system, sans-serif; }
+            .pd-container ::-webkit-scrollbar { width: 8px; height: 8px; }
+            .pd-container ::-webkit-scrollbar-track { background: transparent; }
+            .pd-container ::-webkit-scrollbar-thumb { background-color: rgb(203 213 225); border-radius: 4px; }
+            .dark .pd-container ::-webkit-scrollbar-thumb { background-color: rgb(71 85 105); }
+            .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+            .pd-container button:focus-visible, .pd-container input:focus-visible, .pd-container select:focus-visible, .pd-container a:focus-visible { outline: 2px solid rgb(99 102 241); outline-offset: 2px; }
+            .dark .pd-container button:focus-visible, .dark .pd-container input:focus-visible, .dark .pd-container select:focus-visible, .dark .pd-container a:focus-visible { outline: 2px solid rgb(129 140 248); }
+          `}</style>
+
+          {/* Header */}
+          <header className={cx(
+            "bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between",
+            spacing.page.header
+          )}>
+            <div className="flex items-center gap-3">
+              <div className="bg-indigo-600 p-2 rounded-lg">
+                <ChefHat className="size-6 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 hidden sm:block">
+                {internalTitle}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-4">
+              {showSearch && (
+                <div className="relative hidden md:block w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <input
+                    id={searchInputId}
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    className={cx(
+                      "w-full pl-9 pr-4 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-slate-50 dark:bg-slate-800 text-sm",
+                      spacing.button.md
+                    )}
+                    value={query}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+              )}
+              {showThemeToggle && (
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Alternar tema"
+                >
+                  <MoonStar className="size-5 text-slate-600 dark:text-slate-300" />
+                </button>
+              )}
+              <button
+                className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                onClick={() => setMessagesOpen(!isMessagesOpen)}
+                title="Mensagens"
+              >
+                <Bell className="size-5 text-slate-600 dark:text-slate-300" />
+                {messages.some(m => !m.read) && (
+                  <span className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full" />
+                )}
+              </button>
+              <img
+                src={internalUser.avatarUrl}
+                alt={internalUser.name}
+                className="size-9 rounded-full ring-2 ring-slate-100 dark:ring-slate-800 object-cover"
+              />
+            </div>
+          </header>
+
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            <nav className={cx(
+              "hidden md:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700",
+              spacing.page.sidebar
+            )}>
+              <div className="space-y-1">
+                {sidebarLinks.map((link) => (
+                  <button
+                    key={link.id}
+                    onClick={() => setActiveTab(link.id)}
+                    className={cx(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+                      activeTab === link.id
+                        ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    )}
+                  >
+                    {link.icon}
+                    {link.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="px-3 py-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Estatísticas
+                  </p>
+                  <div className="space-y-2">
+                    {computedStats.slice(0, 3).map((s) => (
+                      <div key={s.id} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-600 dark:text-slate-400">{s.label}</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </nav>
+
+            {/* Main Content */}
+            <main className={cx(
+              "flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900",
+              spacing.page.main
+            )} ref={scrollRef}>
+              {activeTab === 'menu' && <MenuBoard />}
+              {activeTab === 'kitchen' && <KitchenBoard projects={dataProjects} onAction={handleQuickAction} onCloseOrder={openCloseOrderModal} />}
+              {activeTab === 'finance' && <FinanceBoard 
+                  transactions={transactions} 
+                  onAddTransaction={(t) => {
+                      api.post('/transactions', t).then(saved => setTransactions([saved, ...transactions]));
+                  }} 
+                  onDeleteTransaction={(id) => {
+                      api.delete(`/transactions/${id}`).then(() => setTransactions(transactions.filter(t => t.id !== id)));
+                  }} 
+              />}
+              {activeTab === 'settings' && (
+                  <SettingsBoard 
+                      theme={activeTheme}
+                      onToggleTheme={toggleTheme}
+                      user={internalUser}
+                      onUpdateUser={setInternalUser}
+                      title={internalTitle}
+                      onUpdateTitle={setInternalTitle}
+                  />
+              )}
+              {activeTab === 'orders' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start pb-6">
+                  {/* Left Column: Orders List */}
+                  <div className="lg:col-span-2 flex flex-col">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                            Pedidos Ativos
+                          </h2>
+                          <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300">
+                            {dataProjects.length}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+                          <div className="flex items-center rounded-lg bg-white dark:bg-slate-800 p-1 ring-1 ring-slate-200 dark:ring-slate-700">
+                            <button
+                              onClick={() => setView("grid")}
+                              className={cx(
+                                "p-1.5 rounded-md transition-all",
+                                viewMode === "grid"
+                                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                              )}
+                              title="Grade"
+                            >
+                              <LayoutGrid className="size-4" />
+                            </button>
+                            <button
+                              onClick={() => setView("list")}
+                              className={cx(
+                                "p-1.5 rounded-md transition-all",
+                                viewMode === "list"
+                                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                              )}
+                              title="Lista"
+                            >
+                              <List className="size-4" />
+                            </button>
+                          </div>
+                          <div className="h-6 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
+                          <select
+                            id={statusSelectId}
+                            className={cx(
+                              "rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-sm py-1.5 pl-2 pr-8",
+                              "focus:ring-2 focus:ring-indigo-500"
+                            )}
+                            value={activeStatusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                          >
+                            <option value="all">Todos Status</option>
+                            <option value="inProgress">Preparando</option>
+                            <option value="upcoming">Na Fila</option>
+                            <option value="completed">Prontos</option>
+                          </select>
+                          {allowCreate && (
+                            <button
+                              onClick={() => setCreateOpen(true)}
+                              className={cx(
+                                "flex items-center gap-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors shadow-sm",
+                                spacing.button.sm
+                              )}
+                            >
+                              <Plus className="size-4" />
+                              <span className="hidden sm:inline">Novo Pedido</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div aria-live="polite" className="sr-only" ref={liveRef}>
+                        {liveMsg}
+                      </div>
+
+                      <section className={cx(
+                        viewMode === "grid"
+                          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
+                          : "flex flex-col",
+                        spacing.gap.md
+                      )}>
+                        {virtualizeList && viewMode === "list" && !loading && (
+                          <div style={{ height: before }} aria-hidden="true" />
+                        )}
+                        
+                        {visibleProjects.map((p, index) => {
+                          const isEditing = editingId === p.id;
+                          if (isEditing) {
+                            return (
+                              <div key={p.id} className={cx(
+                                "rounded-xl ring-2 ring-indigo-500 bg-white dark:bg-slate-800 shadow-lg",
+                                spacing.card.base
+                              )}>
+                                <form
+                                  onSubmit={(e) => { e.preventDefault(); saveEdit(); }}
+                                  className="space-y-3"
+                                >
+                                  <input
+                                    className="w-full font-semibold bg-transparent border-b border-indigo-200 dark:border-indigo-800 focus:outline-none focus:border-indigo-500"
+                                    value={editDraft.name}
+                                    onChange={(e) => setEditDraft(d => ({ ...d, name: e.target.value }))}
+                                    placeholder="Nome do Prato"
+                                    autoFocus
+                                  />
+                                  <input
+                                    className="w-full text-sm bg-transparent border-b border-slate-200 dark:border-slate-700 focus:outline-none focus:border-indigo-500"
+                                    value={editDraft.subtitle}
+                                    onChange={(e) => setEditDraft(d => ({ ...d, subtitle: e.target.value }))}
+                                    placeholder="Mesa / Detalhes"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="time"
+                                      className="text-sm bg-transparent border rounded px-1"
+                                      value={editDraft.date}
+                                      onChange={(e) => setEditDraft(d => ({ ...d, date: e.target.value }))}
+                                    />
+                                    <select
+                                      className="text-sm bg-transparent border rounded px-1"
+                                      value={editDraft.status}
+                                      onChange={(e) => setEditDraft(d => ({ ...d, status: e.target.value }))}
+                                    >
+                                      <option value="inProgress">Preparando</option>
+                                      <option value="upcoming">Na Fila</option>
+                                      <option value="completed">Pronto</option>
+                                      <option value="paused">Pausado</option>
+                                    </select>
+                                  </div>
+                                  <label className="block">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">
+                                      Progresso: {editDraft.progress || 0}%
+                                    </span>
+                                    <input
+                                      type="range"
+                                      min={0}
+                                      max={100}
+                                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700"
+                                      value={editDraft.progress || 0}
+                                      onChange={(e) => setEditDraft(d => ({ ...d, progress: Number(e.target.value) }))}
+                                    />
+                                  </label>
+                                  <div className="flex justify-between mt-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteProject(editDraft.id)}
+                                      className="text-xs px-2 py-1 rounded text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                                      title="Excluir"
+                                    >
+                                      <Trash2 className="size-4" />
+                                    </button>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={cancelEdit}
+                                        className="text-xs px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        type="submit"
+                                        className="text-xs px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-500"
+                                      >
+                                        Salvar
+                                      </button>
+                                    </div>
+                                  </div>
+                                </form>
+                              </div>
+                            );
+                          }
+
+                          const accent = p.accentColor || "#6366f1";
+                          return (
+                            <article
+                              key={p.id}
+                              className={cx(
+                                "group relative rounded-xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm hover:shadow-md transition-all",
+                                spacing.card.base,
+                                viewMode === "list" && "flex items-center justify-between gap-4"
+                              )}
+                              draggable={canReorder}
+                              onDragStart={() => handleDragStart(p.id)}
+                              onDragOver={handleDragOver}
+                              onDrop={() => handleDrop(p.id)}
+                              onClick={() => openDetail(p)}
+                            >
+                              <div className={cx("flex-1", viewMode === "list" && "flex items-center gap-6")}>
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className={cx(
+                                        "flex items-center justify-center size-10 rounded-lg",
+                                        p.bgColorClass || "bg-slate-100 dark:bg-slate-800"
+                                      )}
+                                    >
+                                      <Utensils className="size-5" style={{ color: accent }} />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                                          {p.name}
+                                        </h3>
+                                        {p.type && (
+                                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${p.type === 'delivery' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                {p.type}
+                                            </span>
+                                        )}
+                                      </div>
+                                      {p.subtitle && (
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                                          {p.subtitle}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {viewMode === "grid" && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); startEdit(p); }}
+                                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                                      aria-label="Editar"
+                                    >
+                                      <MoreVertical className="size-4 text-slate-400" />
+                                    </button>
+                                  )}
+                                </div>
+
+                                {viewMode === "grid" && (
+                                  <div className="mt-4 space-y-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                        <ClockIcon className="size-3" /> {p.date}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {viewMode === "list" && (
+                                  <>
+                                    <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 shrink-0">
+                                      <div className="flex items-center gap-1 hidden sm:flex">
+                                        <ClockIcon className="size-4" />
+                                        <span>{p.date}</span>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+
+                              {!isEditing && (
+                                <div className={cx(
+                                  "mt-4 flex items-center justify-between",
+                                  viewMode === "list" ? "w-auto gap-3 mt-0 shrink-0" : ""
+                                )}>
+                                  <div className="flex -space-x-2">
+                                    {(p.participants || []).slice(0, 3).map((url, i) => (
+                                      <img
+                                        key={i}
+                                        src={url}
+                                        alt=""
+                                        className="size-8 rounded-full ring-2 ring-white dark:ring-slate-800 object-cover"
+                                      />
+                                    ))}
+                                    <button
+                                      className="size-8 inline-flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-white dark:ring-slate-800 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                      style={{ color: accent }}
+                                      title="Adicionar responsável"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEdit(p);
+                                      }}
+                                      disabled={reorderMode}
+                                    >
+                                      <Plus className="size-3" />
+                                    </button>
+                                  </div>
+                                  <div className={cx("flex items-center", spacing.gap.xs)}>
+                                    {p.status === 'upcoming' && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleQuickAction(p, 'prepare'); }}
+                                        className="text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 transition-colors font-medium"
+                                        title="Iniciar preparo"
+                                      >
+                                        Preparar
+                                      </button>
+                                    )}
+                                    {p.status === 'inProgress' && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleQuickAction(p, 'complete'); }}
+                                        className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition-colors font-medium"
+                                        title="Concluir pedido"
+                                      >
+                                        Concluir
+                                      </button>
+                                    )}
+                                    {p.status === 'completed' && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); openCloseOrderModal(p); }}
+                                        className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition-colors font-medium flex items-center gap-1"
+                                        title="Fechar e Receber"
+                                      >
+                                        <DollarSign className="size-3" /> Fechar
+                                      </button>
+                                    )}
+                                    {p.status && viewMode !== "list" && (
+                                      <span className={cx(
+                                        "text-xs px-2 py-0.5 rounded-full ring-1",
+                                        "ring-slate-200 dark:ring-slate-700",
+                                        "text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/40"
+                                      )}>
+                                        {p.status === "inProgress" ? "Preparando" : 
+                                         p.status === "upcoming" ? "Na Fila" : 
+                                         p.status === "completed" ? "Pronto" : 
+                                         p.status === "paused" ? "Pausado" : p.status}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </article>
+                          );
+                        })}
+                        {virtualizeList && viewMode === "list" && !loading && (
+                          <div style={{ height: after }} aria-hidden="true" />
+                        )}
+                        {!loading && visibleProjects.length === 0 && (
+                          <div className="col-span-full text-center py-12 text-slate-500 dark:text-slate-400">
+                            {emptyProjectsLabel}
+                          </div>
+                        )}
+                      </section>
+                      {!loading && !virtualizeList && preparedProjects.length > pageSize && (
+                        <div className={cx(
+                          "flex items-center justify-between mt-6 pt-4 border-t border-slate-200 dark:border-slate-700",
+                          "text-sm text-slate-600 dark:text-slate-300"
+                        )}>
+                          <span>
+                            Página {currentPage} de {totalPages}
+                          </span>
+                          <div className={cx("inline-flex items-center", spacing.gap.xs)}>
+                            <button
+                              className={cx(
+                                "rounded-lg ring-1 ring-slate-200 dark:ring-slate-700",
+                                "bg-white dark:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed",
+                                "hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors",
+                                spacing.button.sm
+                              )}
+                              onClick={() => goToPage(currentPage - 1)}
+                              disabled={currentPage <= 1}
+                            >
+                              Anterior
+                            </button>
+                            <button
+                              className={cx(
+                                "rounded-lg ring-1 ring-slate-200 dark:ring-slate-700",
+                                "bg-white dark:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed",
+                                "hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors",
+                                spacing.button.sm
+                              )}
+                              onClick={() => goToPage(currentPage + 1)}
+                              disabled={currentPage >= totalPages}
+                            >
+                              Próxima
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Right Column: Tables Summary */}
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sticky top-4 shadow-sm">
+                     <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-2">
+                       <LayoutGrid className="size-5 text-indigo-500" />
+                       Mesas
+                     </h3>
+                     <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1 custom-scrollbar">
+                       {Object.keys(tableGroups).length > 0 ? (
+                         Object.values(tableGroups).map(group => (
+                            <div key={group.name} className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
+                               <div className="flex justify-between items-start mb-2">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100">{group.name}</span>
+                                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded">
+                                    {group.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  </span>
+                               </div>
+                               <div className="space-y-1.5">
+                                  {group.items.map(item => (
+                                     <div key={item.id} className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-700/50">
+                                        <span className="truncate max-w-[140px]" title={item.name}>{item.name}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className={cx(
+                                                "size-2 rounded-full",
+                                                item.status === 'completed' ? "bg-emerald-500" : 
+                                                item.status === 'inProgress' ? "bg-amber-500" : "bg-slate-300"
+                                            )} title={item.status === 'completed' ? 'Pronto' : 'Preparando'} />
+                                        </div>
+                                     </div>
+                                  ))}
+                               </div>
+                               <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                   <span className="text-xs text-slate-400">{group.items.length} item(s)</span>
+                               </div>
+                            </div>
+                         ))
+                       ) : (
+                           <div className="text-center py-8 text-slate-400 dark:text-slate-500">
+                               <Utensils className="size-8 mx-auto mb-2 opacity-50" />
+                               <p className="text-sm">Nenhuma mesa com pedidos ativos.</p>
+                           </div>
+                       )}
+                     </div>
+                  </div>
+                </div>
+              )}
+            </main>
+            <aside
+              ref={messagesPanelRef}
+              className={cx(
+                "fixed md:relative inset-y-0 right-0 z-40 w-80 md:w-96",
+                "bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700",
+                "transform transition-transform duration-300 md:transform-none",
+                isMessagesOpen ? "translate-x-0" : "translate-x-full md:translate-x-0",
+                "md:block",
+                messages.length === 0 ? "hidden md:hidden" : ""
+              )}
+              aria-label="Mensagens da Cozinha"
+            >
+              <div className={cx(
+                "flex items-center justify-between border-b border-slate-200 dark:border-slate-700",
+                spacing.page.messages
+              )}>
+                <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Cozinha & Salão
+                </p>
+                <button
+                  className="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  onClick={() => setMessagesOpen(false)}
+                  aria-label="Fechar mensagens"
+                >
+                  <X className="size-5 text-slate-600 dark:text-slate-300" />
+                </button>
+              </div>
+              <div className={cx(
+                "overflow-y-auto h-[calc(100%-64px)]",
+                spacing.page.messages,
+                "space-y-3"
+              )}>
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={cx(
+                      "flex items-start rounded-lg",
+                      "ring-1 ring-slate-200 dark:ring-slate-700",
+                      "bg-white dark:bg-slate-800",
+                      spacing.card.compact,
+                      spacing.gap.sm
+                    )}
+                  >
+                    <img
+                      src={m.avatarUrl}
+                      alt=""
+                      className="size-10 rounded-full object-cover shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {m.name}
+                        </div>
+                        <label className="inline-flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isStarred(m)}
+                            onChange={() => toggleStar(m)}
+                            className="sr-only"
+                            aria-label={`Marcar mensagem de ${m.name}`}
+                          />
+                          <Star
+                            className={cx(
+                              "size-4 transition-colors",
+                              isStarred(m)
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-500"
+                            )}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                        {m.text}
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                        {m.date}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {messages.length === 0 && (
+                  <div className="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
+                    {emptyMessagesLabel}
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+          {allowCreate && createOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Criar pedido"
+            >
+              <div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setCreateOpen(false)}
+              />
+              <div className={cx(
+                "relative w-full max-w-md rounded-xl",
+                "bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700",
+                "shadow-xl",
+                spacing.card.base
+              )}>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                  Novo Pedido
+                </h2>
+                <form className="space-y-3" onSubmit={submitCreate}>
+                  <input
+                    className={cx(
+                      "w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700",
+                      "bg-white dark:bg-slate-800",
+                      spacing.button.sm
+                    )}
+                    placeholder="Nome do Prato"
+                    value={createDraft.name}
+                    onChange={(e) => setCreateDraft((d) => ({ ...d, name: e.target.value }))}
+                    required
+                  />
+                  <input
+                    className={cx(
+                      "w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700",
+                      "bg-white dark:bg-slate-800",
+                      spacing.button.sm
+                    )}
+                    placeholder="Mesa / Cliente"
+                    value={createDraft.subtitle}
+                    onChange={(e) => setCreateDraft((d) => ({ ...d, subtitle: e.target.value }))}
+                  />
+                  <div className="flex gap-2">
+                      <select
+                        className={cx(
+                          "w-1/2 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800",
+                          spacing.button.sm
+                        )}
+                        value={createDraft.type}
+                        onChange={(e) => setCreateDraft((d) => ({ ...d, type: e.target.value }))}
+                      >
+                        <option value="mesa">Mesa</option>
+                        <option value="delivery">Delivery</option>
+                      </select>
+                      <input
+                        type="number"
+                        className={cx(
+                          "w-1/2 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800",
+                          spacing.button.sm
+                        )}
+                        placeholder="Valor (R$)"
+                        value={createDraft.value}
+                        onChange={(e) => setCreateDraft((d) => ({ ...d, value: e.target.value }))}
+                      />
+                  </div>
+                  <input
+                    type="time"
+                    className={cx(
+                      "w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700",
+                      "bg-white dark:bg-slate-800",
+                      spacing.button.sm
+                    )}
+                    value={createDraft.date}
+                    onChange={(e) => setCreateDraft((d) => ({ ...d, date: e.target.value }))}
+                  />
+                  <select
+                    className={cx(
+                      "w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700",
+                      "bg-white dark:bg-slate-800",
+                      spacing.button.sm
+                    )}
+                    value={createDraft.status}
+                    onChange={(e) => setCreateDraft((d) => ({ ...d, status: e.target.value }))}
+                  >
+                    <option value="inProgress">Preparando</option>
+                    <option value="upcoming">Na Fila</option>
+                    <option value="completed">Pronto</option>
+                    <option value="paused">Pausado</option>
+                  </select>
+                  <label className="block">
+                    <span className="text-sm text-slate-600 dark:text-slate-300 mb-1 block">
+                      Progresso: {createDraft.progress || 0}%
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      className="w-full"
+                      value={createDraft.progress || 0}
+                      onChange={(e) => setCreateDraft((d) => ({ ...d, progress: Number(e.target.value) }))}
+                    />
+                  </label>
+                  <div className={cx("flex items-center pt-4", spacing.gap.xs)}>
+                    <button
+                      className={cx(
+                        "rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors",
+                        spacing.button.md
+                      )}
+                      type="submit"
+                    >
+                      Criar Pedido
+                    </button>
+                    <button
+                      type="button"
+                      className={cx(
+                        "rounded-lg ring-1 ring-slate-300 dark:ring-slate-700",
+                        "hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                        spacing.button.md
+                      )}
+                      onClick={() => setCreateOpen(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {closeOrderProject && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+            >
+              <div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setCloseOrderProject(null)}
+              />
+              <div className={cx(
+                "relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-xl p-6"
+              )}>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                  Fechar Pedido
+                </h2>
+                <div className="mb-4">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Pedido</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{closeOrderProject.name}</p>
+                    <p className="text-xs text-slate-500">{closeOrderProject.subtitle}</p>
+                </div>
+                <form className="space-y-3" onSubmit={handleCloseOrder}>
+                  <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Valor Total</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 p-2"
+                        placeholder="0.00"
+                        value={closeOrderForm.amount}
+                        onChange={(e) => setCloseOrderForm((d) => ({ ...d, amount: e.target.value }))}
+                        required
+                      />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Forma de Pagamento</label>
+                      <select
+                        className="w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 p-2"
+                        value={closeOrderForm.paymentMethod}
+                        onChange={(e) => setCloseOrderForm((d) => ({ ...d, paymentMethod: e.target.value }))}
+                      >
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="Cartão de Débito">Cartão de Débito</option>
+                        <option value="Pix">Pix</option>
+                      </select>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descrição (Financeiro)</label>
+                      <input
+                        className="w-full rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 p-2"
+                        value={closeOrderForm.description}
+                        onChange={(e) => setCloseOrderForm((d) => ({ ...d, description: e.target.value }))}
+                      />
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setCloseOrderProject(null)}
+                      className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm"
+                    >
+                      Confirmar e Receber
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {detailProject && !onProjectClick && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Detalhes do Pedido"
+            >
+              <div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setDetailProject(null)}
+              />
+              <div className={cx(
+                "relative w-full max-w-lg rounded-xl",
+                "bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700",
+                "shadow-xl",
+                spacing.card.base
+              )}>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {detailProject.name}
+                </h2>
+                {detailProject.subtitle && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    {detailProject.subtitle}
+                  </p>
+                )}
+                <div className="mt-6 space-y-3">
+                  <div className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">Horário</span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {detailProject.date || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">Status</span>
+                    <span className={cx(
+                      "text-xs px-2 py-0.5 rounded-full ring-1",
+                      "ring-slate-200 dark:ring-slate-700",
+                      "text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/40"
+                    )}>
+                      {detailProject.status === "inProgress" ? "Preparando" : 
+                       detailProject.status === "upcoming" ? "Na Fila" : 
+                       detailProject.status === "completed" ? "Pronto" : 
+                       detailProject.status === "paused" ? "Pausado" : detailProject.status}
+                    </span>
+                  </div>
+                  <div className="py-2 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-600 dark:text-slate-300">Responsáveis</span>
+                      <div className="flex -space-x-2">
+                        {(detailProject.participants || []).map((url, i) => (
+                          <img
+                            key={i}
+                            src={url}
+                            alt=""
+                            className="size-6 rounded-full ring-2 ring-white dark:ring-slate-800 object-cover"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {detailProject.participants && detailProject.participants.length > 0 && (
+                    <div className="py-2">
+                      <span className="text-sm text-slate-600 dark:text-slate-300 block mb-2">
+                        Responsáveis
+                      </span>
+                      <div className="flex -space-x-2">
+                        {detailProject.participants.map((url, i) => (
+                          <img
+                            key={i}
+                            src={url}
+                            alt=""
+                            className="size-10 rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className={cx("flex items-center pt-6", spacing.gap.xs)}>
+                  <button
+                    className={cx(
+                      "rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors",
+                      spacing.button.md
+                    )}
+                    onClick={() => {
+                      startEdit(detailProject);
+                      setDetailProject(null);
+                    }}
+                  >
+                    Editar Pedido
+                  </button>
+                  <button
+                    className={cx(
+                      "rounded-lg ring-1 ring-slate-300 dark:ring-slate-700",
+                      "hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                      spacing.button.md
+                    )}
+                    onClick={() => setDetailProject(null)}
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+
+    const initialProjects = [
+      {
+        id: "p1",
+        name: "Hambúrguer Artesanal",
+        subtitle: "Mesa 05 - Sem cebola",
+        date: "19:30",
+        progress: 60,
+        status: "inProgress",
+        accentColor: "#f59e0b",
+        participants: [
+          "https://ui-avatars.com/api/?name=Chef&background=f59e0b&color=fff", // Chef
+        ],
+        bgColorClass: "bg-amber-50 dark:bg-amber-900/20",
+      },
+      {
+        id: "p2",
+        name: "Pizza Marguerita",
+        subtitle: "Pedido #124 - Entrega",
+        date: "19:45",
+        progress: 20,
+        status: "upcoming",
+        accentColor: "#6366f1",
+        participants: [],
+        bgColorClass: "bg-indigo-50 dark:bg-indigo-900/20",
+      },
+      {
+        id: "p3",
+        name: "Salada Caesar",
+        subtitle: "Mesa 02",
+        date: "19:15",
+        progress: 100,
+        status: "completed",
+        accentColor: "#10b981",
+        participants: [
+          "https://ui-avatars.com/api/?name=Sous&background=10b981&color=fff",
+        ],
+        bgColorClass: "bg-emerald-50 dark:bg-emerald-900/20",
+      },
+      {
+        id: "p4",
+        name: "Suco de Laranja",
+        subtitle: "Mesa 05",
+        date: "19:35",
+        progress: 90,
+        status: "inProgress",
+        accentColor: "#f59e0b",
+        participants: [],
+        bgColorClass: "bg-amber-50 dark:bg-amber-900/20",
+      },
+    ];
+
+    const demoMessages = [
+      {
+        id: "m1",
+        name: "Garçom Carlos",
+        text: "A mesa 05 pediu para agilizar as bebidas.",
+        date: "Há 2 min",
+        avatarUrl: "https://ui-avatars.com/api/?name=Carlos&background=random",
+        read: false,
+        starred: true,
+      },
+      {
+        id: "m2",
+        name: "Gerente Ana",
+        text: "Estoque de tomate está baixo, favor verificar.",
+        date: "Há 15 min",
+        avatarUrl: "https://ui-avatars.com/api/?name=Ana&background=random",
+        read: true,
+      },
+    ];
+
+    function DemoOne() {
+      const [projects, setProjects] = React.useState([]);
+
+      React.useEffect(() => {
+        api.get('/orders').then(data => {
+            // Sort by date desc if not already
+            // But API returns ordered by created_at DESC.
+            setProjects(data);
+        }).catch(console.error);
+      }, []);
+      
+      const handleCreate = (p) => {
+        api.post('/orders', p).then(saved => setProjects(prev => [saved, ...prev]));
+      };
+      
+      const handleUpdate = (p) => {
+        api.put(`/orders/${p.id}`, p).then(() => {
+            setProjects(prev => prev.map(x => x.id === p.id ? p : x));
+        });
+      };
+      
+      const handleReorder = (ids) => {
+        // Optimistic update for UI
+        setProjects(prev => {
+          const map = new Map(prev.map(p => [p.id, p]));
+          return ids.map(id => map.get(id)).filter(Boolean);
+        });
+        // TODO: Persist reorder if needed
+      };
+      
+      const handleDelete = (id) => {
+        if (confirm('Tem certeza que deseja excluir?')) {
+            api.delete(`/orders/${id}`).then(() => {
+                setProjects(prev => prev.filter(p => p.id !== id));
+            });
+        }
+      };
+
+      return (
+        <ProjectDashboard
+          title="Restaurante Sabor & Arte"
+          projects={projects}
+          messages={demoMessages}
+          onProjectCreate={handleCreate}
+          onProjectUpdate={handleUpdate}
+          onProjectsReorder={handleReorder}
+          onProjectAction={(id, action) => {
+             if(action === 'delete') handleDelete(id);
+          }}
+          persistKey="restaurant-demo"
+        />
+      );
+    }
+
+    const rootElement = document.getElementById("root");
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<DemoOne />);
+  </script>
+</body>
+</html>
