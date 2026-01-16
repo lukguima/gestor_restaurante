@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { Users, Coffee, Plus, Search, ChevronLeft, Send, Utensils, LogOut, Printer } from "lucide-react"
 import { api } from "@/lib/api"
-import useSWR from "swr"
+import useSWR, { mutate } from "swr"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -199,7 +199,7 @@ export default function WaiterPage() {
       }
 
       setIsOrderDialogOpen(false)
-      fetchData()
+      mutate("/orders")
     } catch (error) {
       console.error("Failed to save order", error)
       alert("Erro ao salvar pedido")

@@ -41,7 +41,8 @@ export async function POST(req: Request) {
     const safeContent = textToPrint.replace(/["$]/g, '');
 
     const command = `powershell -Command "Write-Output '${safeContent}' | Out-Printer -Name '${safePrinterName}'"`;
-
+    
+    // eslint-disable-next-line no-console
     console.log(`Printing to ${safePrinterName}: ${safeContent}`);
     const { stdout, stderr } = await execAsync(command);
 

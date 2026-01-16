@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { getDb } from "@/lib/db"
 import { getOrderById, normalizeItemsAndTotal } from "@/lib/db-actions"
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
     const { id } = params
     const body = await request.json()
     const db = await getDb()
@@ -78,8 +79,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
     try {
+        const params = await props.params;
         const { id } = params
         const body = await request.json().catch(() => ({}))
 
@@ -104,9 +106,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params
+        const params = await props.params;
+        const { id } = params;
         const db = await getDb()
         const order = await db.get("SELECT * FROM orders WHERE id = ?", [id])
         if (order) {

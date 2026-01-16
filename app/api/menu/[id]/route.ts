@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
+    const params = await props.params;
+    const { id } = params;
     const { name, category, price, description, image } = await request.json();
     const db = await getDb();
     await db.run(
@@ -16,9 +17,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = await params;
+        const params = await props.params;
+        const { id } = params;
         const db = await getDb();
         await db.run("DELETE FROM menu_items WHERE id = ?", [id]);
         return NextResponse.json({ success: true });

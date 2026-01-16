@@ -8,8 +8,8 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
 interface ProfilePageProps {
-  isOnline: boolean
-  setIsOnline: (value: boolean) => void
+  isOnline?: boolean
+  setIsOnline?: (value: boolean) => void
 }
 
 const stats = [
@@ -25,7 +25,7 @@ const menuItems = [
   { icon: Settings, label: "Configurações" },
 ]
 
-export function ProfilePage({ isOnline, setIsOnline }: ProfilePageProps) {
+export function ProfilePage({ isOnline = true, setIsOnline = () => {} }: ProfilePageProps) {
   return (
     <main className="flex-1 overflow-y-auto px-4 pb-24 pt-4">
       {/* Profile Header */}
