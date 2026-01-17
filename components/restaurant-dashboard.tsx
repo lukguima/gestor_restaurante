@@ -31,7 +31,7 @@ export function RestaurantDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-black">
       <RestaurantSidebar
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
