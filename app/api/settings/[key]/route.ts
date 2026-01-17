@@ -12,6 +12,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ key: st
   const { key } = await params;
   const { value } = await req.json();
   const db = await getDb();
-  await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, JSON.stringify(value)]);
+  await db.run(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value",
+    [key, JSON.stringify(value)]
+  );
   return NextResponse.json({ key, value });
 }

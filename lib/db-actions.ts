@@ -98,7 +98,7 @@ export async function normalizeItemsAndTotal(
 
   const ids = cleaned.map((i) => i.id)
   const placeholders = ids.map(() => "?").join(",")
-  const menuRows = await db.all<{ id: string; name: string; price: number | null }[]>(
+  const menuRows = await db.all<{ id: string; name: string; price: number | null }>(
     `SELECT id, name, price FROM menu_items WHERE id IN (${placeholders})`,
     ids
   )

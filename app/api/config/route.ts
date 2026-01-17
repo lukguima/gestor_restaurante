@@ -27,10 +27,10 @@ export async function POST(request: Request) {
     
     // Body should be { key: value }
     for (const [key, value] of Object.entries(body)) {
-        await db.run(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", 
-            [key, JSON.stringify(value)]
-        );
+      await db.run(
+        "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value",
+        [key, JSON.stringify(value)]
+      );
     }
     
     return NextResponse.json({ success: true });

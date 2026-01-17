@@ -1,22 +1,93 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
+import { Pool } from 'pg';
 
-let db: Database | null = null;
+type SqlClient = {
+  exec(sql: string): Promise<void>;
+  run(sql: string, params?: any[]): Promise<void>;
+  get<T = any>(sql: string, params?: any[]): Promise<T | undefined>;
+  all<T = any>(sql: string, params?: any[]): Promise<T[]>;
+};
 
-export async function getDb() {
-  if (db) return db;
-  
-  db = await open({
-    filename: './restaurant.db',
-    driver: sqlite3.Database
-  });
+let client: SqlClient | null = null;
+let sqliteDb: Database | null = null;
+let pgPool: Pool | null = null;
 
-  await initDb(db);
-  
-  return db;
+export async function getDb(): Promise<SqlClient> {
+  if (client) return client;
+
+  const dbUrl = process.env.DATABASE_URL;
+
+  if (dbUrl) {
+    pgPool = new Pool({ connectionString: dbUrl });
+    client = createPostgresClient(pgPool);
+  } else {
+    sqliteDb = await open({
+      filename: './restaurant.db',
+      driver: sqlite3.Database,
+    });
+
+    client = createSqliteClient(sqliteDb);
+  }
+
+  await initDb(client);
+
+  return client;
 }
 
-async function initDb(db: Database) {
+function createSqliteClient(db: Database): SqlClient {
+  return {
+    async exec(sql: string) {
+      await db.exec(sql);
+    },
+    async run(sql: string, params: any[] = []) {
+      await db.run(sql, params);
+    },
+    async get<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+      const row = await db.get(sql, params);
+      return (row as T) ?? undefined;
+    },
+    async all<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+      const rows = await db.all(sql, params);
+      return rows as T[];
+    },
+  };
+}
+
+function createPostgresClient(pool: Pool): SqlClient {
+  const execQuery = async (sql: string, params?: any[]) => {
+    if (!params || params.length === 0) {
+      return pool.query(sql);
+    }
+
+    let index = 0;
+    const transformed = sql.replace(/\?/g, () => {
+      index += 1;
+      return `$${index}`;
+    });
+
+    return pool.query(transformed, params);
+  };
+
+  return {
+    async exec(sql: string) {
+      await pool.query(sql);
+    },
+    async run(sql: string, params?: any[]) {
+      await execQuery(sql, params);
+    },
+    async get<T = any>(sql: string, params?: any[]): Promise<T | undefined> {
+      const result = await execQuery(sql, params);
+      return (result.rows[0] as T) ?? undefined;
+    },
+    async all<T = any>(sql: string, params?: any[]): Promise<T[]> {
+      const result = await execQuery(sql, params);
+      return result.rows as T[];
+    },
+  };
+}
+
+async function initDb(db: SqlClient) {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
@@ -28,7 +99,7 @@ async function initDb(db: Database) {
       value REAL,
       items TEXT, -- JSON string
       progress INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       table_number INTEGER,
       payment_method TEXT,
       waiter_name TEXT
